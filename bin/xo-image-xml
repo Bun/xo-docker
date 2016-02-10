@@ -1,0 +1,43 @@
+#!/usr/bin/env python3
+
+from xml.sax.saxutils import escape
+from hashlib import sha1
+
+
+def digest(fname):
+    h = sha1()
+    with open(fname, 'rb') as fp:
+        for buf in iter(lambda: fp.read(4096), b''):
+            h.update(buf)
+    return h.hexdigest()
+
+
+template = '''<images>
+     <image>
+          <type>ZFILESYSTEM</type>
+          <signature>{}</signature>
+          <url>{}</url>
+     </image>
+     <image>
+          <type>KERNEL</type>
+          <signature>{}</signature>
+          <url>{}</url>
+     </image>
+     <image>
+          <type>RAMDISK</type>
+          <signature>{}</signature>
+          <url>{}</url>
+     </image>
+</images>'''
+
+if __name__ == '__main__':
+    from sys import argv
+
+    base_url = argv[1]
+    filesystem = argv[2]
+    kernel = argv[3]
+    ramdisk = argv[4]
+
+    print(template.format(digest(filesystem), escape(base_url + filesystem),
+                          digest(kernel), escape(base_url + kernel),
+                          digest(ramdisk), escape(base_url + ramdisk)))

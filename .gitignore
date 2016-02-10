@@ -1,0 +1,9 @@
+/host/filesystem
+/host/docker-host/
+
+/host/sbin/
+/host/.PKGINFO
+/host/.SIGN.*
+
+/host/*.apk
+/host/*.iso
