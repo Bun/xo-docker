@@ -2,6 +2,7 @@
 
 from xml.sax.saxutils import escape
 from hashlib import sha1
+from time import asctime
 
 
 def digest(fname):
@@ -12,7 +13,8 @@ def digest(fname):
     return h.hexdigest()
 
 
-template = '''<images>
+template = '''<!-- {} -->
+<images>
      <image>
           <type>ZFILESYSTEM</type>
           <signature>{}</signature>
@@ -38,6 +40,7 @@ if __name__ == '__main__':
     kernel = argv[3]
     ramdisk = argv[4]
 
-    print(template.format(digest(filesystem), escape(base_url + filesystem),
+    print(template.format(asctime(),
+                          digest(filesystem), escape(base_url + filesystem),
                           digest(kernel), escape(base_url + kernel),
                           digest(ramdisk), escape(base_url + ramdisk)))

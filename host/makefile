@@ -19,8 +19,8 @@ clean:
 # mount -t iso9660 -o loop alpine-3.3.1-x86_64.iso iso
 
 deploy:
-	cp iso/boot/vmlinuz-grsec docker-host/vmlinuz-grsec
-	cp iso/boot/initramfs-grsec docker-host/initramfs-grsec
-	(cd docker-host && ../../bin/xo-image-xml http://geni-images.uvalight.net/ben/docker-host/ \
+	rsync -av linux-grsec/boot/vmlinuz-grsec docker-host/vmlinuz-grsec
+	rsync -av initrd-fixed docker-host/initramfs-grsec
+	(cd docker-host && ../../bin/xo-image-xml http://geni-images.uvalight.net/images/ben/docker-host/ \
 		filesystem.tgz vmlinuz-grsec initramfs-grsec) > docker-host/docker-host.xml
 	rsync -av --delete docker-host/ geni-images.uvalight.net:share/docker-host/
