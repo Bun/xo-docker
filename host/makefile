@@ -15,9 +15,6 @@ clean:
 	rm -rf sbin .PKGINFO .SIGN.* *.apk
 	rm -rf alpine filesystem
 
-# wget -N http://nl.alpinelinux.org/alpine//latest-stable/releases/x86_64/alpine-3.3.1-x86_64.iso
-# mount -t iso9660 -o loop alpine-3.3.1-x86_64.iso iso
-
 deploy:
 	rsync -av linux-grsec/boot/vmlinuz-grsec docker-host/vmlinuz-grsec
 	rsync -av initrd-fixed docker-host/initramfs-grsec

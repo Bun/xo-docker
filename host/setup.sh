@@ -33,16 +33,24 @@ xo_mount() {
 
 xo_install() {
     echo "Installing base image"
-    ./sbin/apk.static -X "${mirror}/latest-stable/main" -U \
-        --allow-untrusted \
+    mkdir -p ${chroot_dir}/etc/apk
+    cp -r apk-keys/ ${chroot_dir}/etc/apk/keys/
+
+    ./sbin/apk.static --update-cache \
+        --repository "${mirror}latest-stable/main" \
         --root "${chroot_dir}" \
         --initdb \
-        add alpine-base openssh curl
+        add alpine-base
 }
 
 xo_kmod_install() {
     mkdir -p "${chroot_dir}/lib/modules/$1"
-    cp -v "linux-grsec/lib/modules/$1" "${chroot_dir}/lib/modules/$1"
+    if [ -z "$2" ]
+    then
+        rsync -av "linux-grsec/lib/modules/$1/" "${chroot_dir}/lib/modules/$1/"
+    else
+        cp -v "linux-grsec/lib/modules/$1/$2" "${chroot_dir}/lib/modules/$1/$2"
+    fi
 }
 
 xo_kmods() {
@@ -54,27 +62,64 @@ xo_kmods() {
 
     kver=$(ls -1 linux-grsec/lib/modules/ | head -1)
 
-    xo_kmod_install "$kver/kernel/drivers/ata/ata_generic.ko"
-    xo_kmod_install "$kver/kernel/drivers/ata/ata_piix.ko"
-    xo_kmod_install "$kver/kernel/drivers/ata/libata.ko"
-    xo_kmod_install "$kver/kernel/drivers/ata/pata_acpi.ko"
-    xo_kmod_install "$kver/kernel/drivers/block/loop.ko"
-    xo_kmod_install "$kver/kernel/drivers/block/virtio_blk.ko"
-    xo_kmod_install "$kver/kernel/drivers/net/ethernet/realtek/8139cp.ko"
-    xo_kmod_install "$kver/kernel/drivers/net/mii.ko"
-    xo_kmod_install "$kver/kernel/drivers/scsi/scsi_mod.ko"
-    xo_kmod_install "$kver/kernel/drivers/virtio/virtio_balloon.ko"
-    xo_kmod_install "$kver/kernel/drivers/virtio/virtio.ko"
-    xo_kmod_install "$kver/kernel/drivers/virtio/virtio_pci.ko"
-    xo_kmod_install "$kver/kernel/drivers/virtio/virtio_ring.ko"
-    xo_kmod_install "$kver/kernel/fs/ext4/ext4.ko"
-    xo_kmod_install "$kver/kernel/fs/jbd2/jbd2.ko"
-    xo_kmod_install "$kver/kernel/fs/mbcache.ko"
-    xo_kmod_install "$kver/kernel/fs/squashfs/squashfs.ko"
-    xo_kmod_install "$kver/kernel/lib/crc16.ko"
-    xo_kmod_install "$kver/kernel/lib/lz4/lz4_decompress.ko"
-    xo_kmod_install "$kver/kernel/net/ipv6/ipv6.ko"
-    xo_kmod_install "$kver/kernel/net/packet/af_packet.ko"
+    mkdir -p "${chroot_dir}/lib/modules/$kver"
+    cp -v "linux-grsec/lib/modules/$kver/"modules.* "${chroot_dir}/lib/modules/$kver/"
+
+    xo_kmod_install "$kver/kernel/drivers/ata"              "ata_generic.ko"
+    xo_kmod_install "$kver/kernel/drivers/ata"              "ata_piix.ko"
+    xo_kmod_install "$kver/kernel/drivers/ata"              "libata.ko"
+    xo_kmod_install "$kver/kernel/drivers/ata"              "pata_acpi.ko"
+    xo_kmod_install "$kver/kernel/drivers/block"            "loop.ko"
+    xo_kmod_install "$kver/kernel/drivers/block"            "virtio_blk.ko"
+    xo_kmod_install "$kver/kernel/drivers/net/ethernet/realtek/" "8139cp.ko"
+    xo_kmod_install "$kver/kernel/drivers/net"              "mii.ko"
+    xo_kmod_install "$kver/kernel/drivers/scsi"             "scsi_mod.ko"
+    xo_kmod_install "$kver/kernel/drivers/virtio"           "virtio_balloon.ko"
+    xo_kmod_install "$kver/kernel/drivers/virtio"           "virtio.ko"
+    xo_kmod_install "$kver/kernel/drivers/virtio"           "virtio_pci.ko"
+    xo_kmod_install "$kver/kernel/drivers/virtio"           "virtio_ring.ko"
+    xo_kmod_install "$kver/kernel/fs/ext4"                  "ext4.ko"
+    xo_kmod_install "$kver/kernel/fs/jbd2"                  "jbd2.ko"
+    xo_kmod_install "$kver/kernel/fs"                       "mbcache.ko"
+    xo_kmod_install "$kver/kernel/fs/squashfs"              "squashfs.ko"
+    xo_kmod_install "$kver/kernel/lib"                      "crc16.ko"
+    xo_kmod_install "$kver/kernel/lib/lz4"                  "lz4_decompress.ko"
+    xo_kmod_install "$kver/kernel/net/ipv6"                 "ipv6.ko"
+    xo_kmod_install "$kver/kernel/net/packet"               "af_packet.ko"
+
+    xo_kmod_install "$kver/kernel/drivers/ata/" "ata_generic.ko"
+    xo_kmod_install "$kver/kernel/drivers/ata/" "ata_piix.ko"
+    xo_kmod_install "$kver/kernel/drivers/ata/" "libata.ko"
+    xo_kmod_install "$kver/kernel/drivers/ata/" "pata_acpi.ko"
+    xo_kmod_install "$kver/kernel/drivers/block/" "loop.ko"
+    xo_kmod_install "$kver/kernel/drivers/block/" "virtio_blk.ko"
+    xo_kmod_install "$kver/kernel/drivers/net/ethernet/realtek/" "8139cp.ko"
+    xo_kmod_install "$kver/kernel/drivers/net/" "mii.ko"
+    xo_kmod_install "$kver/kernel/drivers/scsi/" "scsi_mod.ko"
+    xo_kmod_install "$kver/kernel/drivers/virtio/" "virtio_balloon.ko"
+    xo_kmod_install "$kver/kernel/drivers/virtio/" "virtio.ko"
+    xo_kmod_install "$kver/kernel/drivers/virtio/" "virtio_pci.ko"
+    xo_kmod_install "$kver/kernel/drivers/virtio/" "virtio_ring.ko"
+    xo_kmod_install "$kver/kernel/fs/ext4/" "ext4.ko"
+    xo_kmod_install "$kver/kernel/fs/jbd2/" "jbd2.ko"
+    xo_kmod_install "$kver/kernel/fs/" "mbcache.ko"
+    xo_kmod_install "$kver/kernel/fs/overlayfs/" "overlay.ko"
+    xo_kmod_install "$kver/kernel/fs/squashfs/" "squashfs.ko"
+    xo_kmod_install "$kver/kernel/lib/" "crc16.ko"
+    xo_kmod_install "$kver/kernel/lib/lz4/" "lz4_decompress.ko"
+    xo_kmod_install "$kver/kernel/net/802/" "stp.ko"
+    xo_kmod_install "$kver/kernel/net/bridge/" "bridge.ko"
+    xo_kmod_install "$kver/kernel/net/bridge/" "br_netfilter.ko"
+    xo_kmod_install "$kver/kernel/net/ipv6/" "ipv6.ko"
+    xo_kmod_install "$kver/kernel/net/llc/" "llc.ko"
+    xo_kmod_install "$kver/kernel/net/netfilter/" "nf_conntrack.ko"
+    xo_kmod_install "$kver/kernel/net/netfilter/" "nf_nat.ko"
+    xo_kmod_install "$kver/kernel/net/netfilter/" "x_tables.ko"
+    xo_kmod_install "$kver/kernel/net/netfilter/" "xt_addrtype.ko"
+    xo_kmod_install "$kver/kernel/net/netfilter/" "xt_conntrack.ko"
+    xo_kmod_install "$kver/kernel/net/packet/" "af_packet.ko"
+
+    xo_kmod_install "$kver/kernel/net/ipv4/netfilter/"
 }
 
 xo_chroot_prep() {
@@ -90,7 +135,6 @@ xo_chroot_prep() {
     cp /etc/resolv.conf ${chroot_dir}/etc/
     mkdir -p ${chroot_dir}/root
     mkdir -p ${chroot_dir}/etc/apk
-    echo "${mirror}/${branch}/main" > ${chroot_dir}/etc/apk/repositories
 }
 
 xo_apk_get

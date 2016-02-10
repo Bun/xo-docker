@@ -1,3 +1,14 @@
 #!/bin/sh
 
-curl http://169.254.169.254/latest/user-data/ > /run/ec2-user-data
+EC2_FILE=/run/ec2-user-data
+
+curl -s http://169.254.169.254/latest/user-data/ -o /run/ec2-user-data
+
+hostname=$(egrep '^host_name=' ${EC2_FILE} | cut -d = -f 2 | head -1)
+
+if [ -n "${hostname}" ]
+then
+    # TODO: maybe update /etc/hosts
+    echo ${hostname} > /etc/hostname
+    hostname ${hostname}
+fi

@@ -6,4 +6,4 @@
 /host/.SIGN.*
 
 /host/*.apk
-/host/*.iso
+/host/linux-grsec/

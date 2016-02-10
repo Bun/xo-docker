@@ -1,29 +1,22 @@
 #!/bin/sh
 
-chroot alpine /sbin/rc-update add devfs sysinit
-chroot alpine /sbin/rc-update add dmesg sysinit
-chroot alpine /sbin/rc-update add mdev sysinit
+source config.sh
 
-chroot alpine /sbin/rc-update add hwclock boot
-chroot alpine /sbin/rc-update add modules boot
-chroot alpine /sbin/rc-update add sysctl boot
-chroot alpine /sbin/rc-update add hostname boot
-chroot alpine /sbin/rc-update add bootmisc boot
-chroot alpine /sbin/rc-update add syslog boot
-chroot alpine /sbin/rc-update add urandom boot
-chroot alpine /sbin/rc-update add networking boot
+(echo "${mirror}latest-stable/main";
+ echo "${mirror}latest-stable/community") > ${chroot_dir}/etc/apk/repositories
 
-chroot alpine /sbin/rc-update add sshd
-chroot alpine /sbin/rc-update add local
+cp static/bootstrap.sh ${chroot_dir}/root/bootstrap.sh
+chroot ${chroot_dir} /bin/sh /root/bootstrap.sh
+rm ${chroot_dir}/root/bootstrap.sh
 
-chroot alpine /sbin/rc-update add mount-ro shutdown
-chroot alpine /sbin/rc-update add killprocs shutdown
-chroot alpine /sbin/rc-update add savecache shutdown
+# TODO: replace with EC2-based config
+mkdir -p ${chroot_dir}/root/.ssh
+chmod 700 ${chroot_dir}/root/.ssh
+cat /home/ben/.ssh/id_ed25519.pub > ${chroot_dir}/root/.ssh/authorized_keys
 
-mkdir -p alpine/root/.ssh
-chmod 700 alpine/root/.ssh
-cat /home/ben/.ssh/id_ed25519.pub > alpine/root/.ssh/authorized_keys
+cp static/network ${chroot_dir}/etc/network/interfaces
+cp static/modules ${chroot_dir}/etc/modules
+cp static/motd    ${chroot_dir}/etc/motd
 
-cp static/network alpine/etc/network/interfaces
-cp static/ec2-user-data alpine/etc/local.d/ec2-user-data.start
-chmod +x alpine/etc/local.d/ec2-user-data.start
+cp static/ec2-user-data ${chroot_dir}/etc/local.d/ec2-user-data.start
+chmod +x ${chroot_dir}/etc/local.d/ec2-user-data.start
