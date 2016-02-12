@@ -3,10 +3,12 @@ set -e
 
 source config.sh
 
-if ! mountpoint -q "${chroot_dir}"
-then
-    mount -o loop "${fs}" "${chroot_dir}"
-fi
+apk_cache_dir="apk-cache"
+chroot_apk_cache="${chroot_dir}/var/cache/apk"
 
-mount -t proc none ${chroot_dir}/proc
-mount -o bind /sys ${chroot_dir}/sys
+
+mountpoint -q "${chroot_dir}"       || mount -o loop "${fs}" "${chroot_dir}"
+mountpoint -q "${chroot_apk_cache}" || mount -o bind "${apk_cache_dir}" "${chroot_apk_cache}"
+
+mountpoint -q "${chroot_dir}/proc" || mount -t proc none ${chroot_dir}/proc
+mountpoint -q "${chroot_dir}/sys"  || mount -o bind /sys ${chroot_dir}/sys

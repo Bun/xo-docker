@@ -90,14 +90,10 @@ xo_kmods() {
     xo_kmod_install "$kver/kernel/net/bridge/" "br_netfilter.ko"
     xo_kmod_install "$kver/kernel/net/ipv6/" "ipv6.ko"
     xo_kmod_install "$kver/kernel/net/llc/" "llc.ko"
-    xo_kmod_install "$kver/kernel/net/netfilter/" "nf_conntrack.ko"
-    xo_kmod_install "$kver/kernel/net/netfilter/" "nf_nat.ko"
-    xo_kmod_install "$kver/kernel/net/netfilter/" "x_tables.ko"
-    xo_kmod_install "$kver/kernel/net/netfilter/" "xt_addrtype.ko"
-    xo_kmod_install "$kver/kernel/net/netfilter/" "xt_conntrack.ko"
     xo_kmod_install "$kver/kernel/net/packet/" "af_packet.ko"
 
     xo_kmod_install "$kver/kernel/net/ipv4/netfilter/"
+    xo_kmod_install "$kver/kernel/net/netfilter/"
 }
 
 xo_chroot_prep() {

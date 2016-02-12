@@ -1,0 +1,59 @@
+#!/bin/sh
+
+emergency_shell() {
+    echo
+    if [ -n "$@" ]; then
+        echo "Error: $@"
+    fi
+    echo "Booting into emergency shell."
+    echo
+    exec /bin/busybox sh
+    exit 1
+}
+
+sysroot=/rootfs
+
+/bin/busybox mkdir -p /proc /sys /dev /sbin /usr/bin /usr/sbin $sysroot
+/bin/busybox --install -s
+
+mount -t proc -o noexec,nosuid,nodev proc /proc
+mount -t sysfs -o noexec,nosuid,nodev sysfs /sys
+
+mount -t devtmpfs -o exec,nosuid,mode=0755,size=2M devtmpfs /dev 2>/dev/null \
+    || mount -t tmpfs -o exec,nosuid,mode=0755,size=2M tmpfs /dev
+[ -d /dev/pts ] || mkdir -m 755 /dev/pts
+[ -c /dev/ptmx ] || mknod -m 666 /dev/ptmx c 5 2
+[ -f /dev/null ] && rm -f /dev/null
+[ -c /dev/null ] || mknod -m 666 /dev/null c 1 3
+mount -t devpts -o gid=5,mode=0620,noexec,nosuid devpts /dev/pts
+[ -d /dev/shm ] || mkdir /dev/shm
+mount -t tmpfs -o nodev,nosuid,noexec shm /dev/shm
+
+echo /sbin/mdev > /proc/sys/kernel/hotplug
+
+modprobe loop
+modprobe ext4
+modprobe -a virtio virtio_pci virtio_balloon virtio_blk virtio_ring
+modprobe -a libata ata_generic pata_acpi ata_piix scsi_mod
+
+mdev -s
+
+set -- $(cat /proc/cmdline)
+
+rootfstype=ext4
+
+for arg; do
+    case "$arg" in
+    root=*)       root=${arg#root=} ;;
+    rootfstype=*) rootfstype=${arg#rootfstype=} ;;
+    esac
+done
+
+if [ -z "$root" ]; then
+    emergency_shell "No root filesystem specified."
+fi
+
+mount -t ${rootfstype} -o ro "$root" "$sysroot" || \
+    emergency_shell "Failed to mount root filesystem"
+
+exec /bin/busybox switch_root $sysroot /sbin/init

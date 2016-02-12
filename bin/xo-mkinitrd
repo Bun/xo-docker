@@ -1,0 +1,54 @@
+#!/bin/sh
+
+set -e
+
+chroot_dir=$1
+
+
+xo_kmod_install() {
+    mkdir -p "${chroot_dir}/lib/modules/$1"
+    if [ -z "$2" ]
+    then
+        rsync -av "linux-grsec/lib/modules/$1/" "${chroot_dir}/lib/modules/$1/"
+    else
+        cp -v "linux-grsec/lib/modules/$1/$2" "${chroot_dir}/lib/modules/$1/$2"
+    fi
+}
+
+kver=$(ls -1 linux-grsec/lib/modules/ | head -1)
+
+echo "Building initrd for kernel $kver"
+
+mkdir -p initrd/bin
+
+cp -L /bin/busybox initrd/bin/busybox
+ln -fs busybox initrd/bin/sh
+
+chmod +x initrd/bin/busybox
+chmod +x initrd/init
+
+mkdir -p "${chroot_dir}/lib/modules/$kver"
+cp -v "linux-grsec/lib/modules/$kver/"modules.* "${chroot_dir}/lib/modules/$kver/"
+
+xo_kmod_install "$kver/kernel/drivers/ata/" "ata_generic.ko"
+xo_kmod_install "$kver/kernel/drivers/ata/" "ata_piix.ko"
+xo_kmod_install "$kver/kernel/drivers/ata/" "libata.ko"
+xo_kmod_install "$kver/kernel/drivers/ata/" "pata_acpi.ko"
+xo_kmod_install "$kver/kernel/drivers/block/" "loop.ko"
+xo_kmod_install "$kver/kernel/drivers/block/" "virtio_blk.ko"
+xo_kmod_install "$kver/kernel/drivers/net/ethernet/realtek/" "8139cp.ko"
+xo_kmod_install "$kver/kernel/drivers/net/" "mii.ko"
+xo_kmod_install "$kver/kernel/drivers/scsi/" "scsi_mod.ko"
+xo_kmod_install "$kver/kernel/drivers/virtio/" "virtio_balloon.ko"
+xo_kmod_install "$kver/kernel/drivers/virtio/" "virtio.ko"
+xo_kmod_install "$kver/kernel/drivers/virtio/" "virtio_pci.ko"
+xo_kmod_install "$kver/kernel/drivers/virtio/" "virtio_ring.ko"
+xo_kmod_install "$kver/kernel/fs/ext4/" "ext4.ko"
+xo_kmod_install "$kver/kernel/fs/jbd2/" "jbd2.ko"
+xo_kmod_install "$kver/kernel/fs/" "mbcache.ko"
+xo_kmod_install "$kver/kernel/fs/overlayfs/" "overlay.ko"
+xo_kmod_install "$kver/kernel/fs/squashfs/" "squashfs.ko"
+xo_kmod_install "$kver/kernel/lib/" "crc16.ko"
+xo_kmod_install "$kver/kernel/lib/lz4/" "lz4_decompress.ko"
+
+(cd initrd/ && find . -print0 | cpio --null -ov --format=newc) | gzip -7 > "$2"

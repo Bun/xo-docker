@@ -1,8 +1,6 @@
 #!/bin/sh
 
-apk --update add openssh curl docker
-rm -r /var/cache/apk
-mkdir -p /var/cache/apk
+apk --update add openssh docker
 
 /sbin/rc-update add devfs sysinit
 /sbin/rc-update add dmesg sysinit
@@ -19,6 +17,7 @@ mkdir -p /var/cache/apk
 
 /sbin/rc-update add sshd default
 /sbin/rc-update add local default
+/sbin/rc-update add docker default
 
 /sbin/rc-update add mount-ro shutdown
 /sbin/rc-update add killprocs shutdown

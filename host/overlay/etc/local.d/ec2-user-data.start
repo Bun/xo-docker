@@ -2,7 +2,7 @@
 
 EC2_FILE=/run/ec2-user-data
 
-curl -s http://169.254.169.254/latest/user-data/ -o /run/ec2-user-data
+wget -q http://169.254.169.254/latest/user-data/ -O /run/ec2-user-data
 
 hostname=$(egrep '^host_name=' ${EC2_FILE} | cut -d = -f 2 | head -1)
 
