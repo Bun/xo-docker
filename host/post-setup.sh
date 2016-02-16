@@ -10,6 +10,6 @@ mkdir -p ${chroot_dir}/root/.ssh
 chmod 700 ${chroot_dir}/root/.ssh
 cat /home/ben/.ssh/id_ed25519.pub > ${chroot_dir}/root/.ssh/authorized_keys
 
-rsync -av overlay/ ${chroot_dir}/
+rsync -av --no-owner --no-group overlay/ ${chroot_dir}/
 chroot ${chroot_dir} /bin/sh /root/bootstrap.sh
 rm ${chroot_dir}/root/bootstrap.sh

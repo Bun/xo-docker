@@ -18,6 +18,7 @@ apk --update add openssh docker
 /sbin/rc-update add sshd default
 /sbin/rc-update add local default
 /sbin/rc-update add docker default
+/sbin/rc-update add xo-agent default
 
 /sbin/rc-update add mount-ro shutdown
 /sbin/rc-update add killprocs shutdown

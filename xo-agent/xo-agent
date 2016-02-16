@@ -1,0 +1,96 @@
+#!/bin/sh
+
+# TODO:
+#
+# * interfaces
+# * routes
+# * scripts
+# * users/sudo
+
+if [ -n "$XO_AGENT_TEST" ]; then
+    XO_USER_DATA=/tmp/ec2-user-data
+    XO_ROOT_SSH=/tmp/root-ssh
+    xo_log() { echo `date +"%Y-%m-%d %H:%M:%S"`" | $@"; }
+    xo_import_user_data() {
+        test -s "test/user-data" && \
+        cp "test/user-data" "${XO_USER_DATA}"
+    }
+else
+    XO_USER_DATA=/run/ec2-user-data
+    XO_ROOT_SSH=/root/.ssh
+    xo_log() { logger -t xo-agent -p user.notice -- "$@"; }
+    xo_import_user_data() {
+        wget -q "http://169.254.169.254/latest/user-data/" \
+            -O "${XO_USER_DATA}-fetch" \
+        && test -s "${XO_USER_DATA}-fetch" \
+        && mv "${XO_USER_DATA}-fetch" "${XO_USER_DATA}"
+    }
+fi
+
+
+quote() { printf %s\\n "$1" | sed "s/'/'\\\\''/g"; }
+simple() { printf %s\\n "$1" | sed -r "s/[^a-zA-Z0-9_-]+/_/g"; }
+
+xo_add_ssh_auth() {
+    mkdir -p "${XO_ROOT_SSH}"
+    chmod 700 "${XO_ROOT_SSH}"
+    if ! grep -Fsqx "$arg" "${XO_ROOT_SSH}/authorized_keys"; then
+        echo "$arg" >> "${XO_ROOT_SSH}/authorized_keys"
+    fi
+}
+
+xo_parse_config() {
+    local sect=""
+    local key=""
+    while read -r line; do
+        case "$line" in
+            "["*"]")
+                line=${line#[}
+                sect=${line%]}
+                ;;
+            *=*)
+                key=$(echo "$line" | cut -d = -f 1)
+                eval "cfg_"$(simple "${sect}_${key}")"='"$(quote "${line#$key=}")"'"
+        esac
+    done < "${XO_USER_DATA}"
+    #set | grep cfg_
+}
+
+xo_sync_hostname() {
+    if [ -z "${cfg_global_host_name}" ]; then
+        return
+    fi
+
+    if [ "$(hostname)" != "$cfg_global_host_name" ]; then
+        xo_log "Setting hostname to ${cfg_global_host_name}"
+        hostname "$cfg_global_host_name"
+        # TODO: write /etc/hostname
+    fi
+}
+
+xo_sync_authorized() {
+    # We currently only care about the root user
+    OIFS=$IFS
+    IFS=':'
+    for arg in ${cfg_users_root}; do
+        case "$arg" in
+            ssh-*)
+                xo_add_ssh_auth "root" "$arg"
+                ;;
+        esac
+    done
+    IFS=$OIFS
+}
+
+xo_log "Fetching configuration"
+while :; do
+    xo_import_user_data && break
+    sleep 5s
+done
+
+xo_log "Parsing configuration"
+xo_parse_config
+
+xo_log "Deploying configuration"
+xo_sync_hostname
+xo_sync_authorized

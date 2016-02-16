@@ -43,6 +43,13 @@ xo_install() {
         add alpine-base
 }
 
+xo_install_agent() {
+    echo "Installing agent"
+    mkdir -p "${chroot_dir}/usr/sbin"
+    cp ../xo-agent/xo-agent "${chroot_dir}/usr/sbin/xo-agent"
+    cp ../xo-agent/agent-init "${chroot_dir}/etc/init.d/xo-agent"
+}
+
 xo_kmod_install() {
     mkdir -p "${chroot_dir}/lib/modules/$1"
     if [ -z "$2" ]
@@ -115,6 +122,7 @@ xo_apk_get
 xo_create_fs
 xo_mount
 xo_install
+xo_install_agent
 xo_kmods
 xo_chroot_prep
 
