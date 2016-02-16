@@ -11,6 +11,11 @@ img:
 	mkdir -p docker-host
 	tar czf docker-host/filesystem.tgz filesystem
 
+postimg:
+	bash mount.sh
+	bash post-setup.sh
+	make img
+
 
 docker-host/initramfs: initrd/init
 	../bin/xo-mkinitrd initrd docker-host/initramfs

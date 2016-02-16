@@ -9,6 +9,7 @@
 
 if [ -n "$XO_AGENT_TEST" ]; then
     XO_USER_DATA=/tmp/ec2-user-data
+    XO_BOOTSCRIPT=/tmp/xo-bootscript
     XO_ROOT_SSH=/tmp/root-ssh
     xo_log() { echo `date +"%Y-%m-%d %H:%M:%S"`" | $@"; }
     xo_import_user_data() {
@@ -17,9 +18,11 @@ if [ -n "$XO_AGENT_TEST" ]; then
     }
 else
     XO_USER_DATA=/run/ec2-user-data
+    XO_BOOTSCRIPT=/run/xo-bootscript
     XO_ROOT_SSH=/root/.ssh
     xo_log() { logger -t xo-agent -p user.notice -- "$@"; }
     xo_import_user_data() {
+        # TODO: logging
         wget -q "http://169.254.169.254/latest/user-data/" \
             -O "${XO_USER_DATA}-fetch" \
         && test -s "${XO_USER_DATA}-fetch" \
@@ -31,14 +34,7 @@ fi
 quote() { printf %s\\n "$1" | sed "s/'/'\\\\''/g"; }
 simple() { printf %s\\n "$1" | sed -r "s/[^a-zA-Z0-9_-]+/_/g"; }
 
-xo_add_ssh_auth() {
-    mkdir -p "${XO_ROOT_SSH}"
-    chmod 700 "${XO_ROOT_SSH}"
-    if ! grep -Fsqx "$arg" "${XO_ROOT_SSH}/authorized_keys"; then
-        echo "$arg" >> "${XO_ROOT_SSH}/authorized_keys"
-    fi
-}
-
+# TODO: remove
 xo_parse_config() {
     local sect=""
     local key=""
@@ -53,7 +49,6 @@ xo_parse_config() {
                 eval "cfg_"$(simple "${sect}_${key}")"='"$(quote "${line#$key=}")"'"
         esac
     done < "${XO_USER_DATA}"
-    #set | grep cfg_
 }
 
 xo_sync_hostname() {
@@ -64,33 +59,80 @@ xo_sync_hostname() {
     if [ "$(hostname)" != "$cfg_global_host_name" ]; then
         xo_log "Setting hostname to ${cfg_global_host_name}"
         hostname "$cfg_global_host_name"
-        # TODO: write /etc/hostname
+        echo "$cfg_global_host_name" > /etc/hostname
     fi
 }
 
-xo_sync_authorized() {
-    # We currently only care about the root user
-    OIFS=$IFS
-    IFS=':'
-    for arg in ${cfg_users_root}; do
-        case "$arg" in
-            ssh-*)
-                xo_add_ssh_auth "root" "$arg"
-                ;;
-        esac
+xo_sync_ifaces() {
+    xo_log "Setting up interfaces"
+    local mac
+    local state
+    local ip
+    local ifaces=$(awk 'BEGIN { i = 0 } {
+        if ($1 == "[interfaces]") { i = 1; }
+        else if (substr($1, 0, 1) == "[") { i = 0; }
+        else if (i == 1) { print $0; }}' "$XO_USER_DATA")
+
+    for iface in $ifaces; do
+        for dev in $(ls -1 /sys/class/net/); do
+            mac=${iface%%=*}
+            # XXX: not tested with IPv6
+            ip=$(echo "$iface" | cut -d : -f 3-)
+            state=$(echo "${iface#*=}" | cut -d : -f 1)
+
+            if [ $mac == $(tr -d : < "/sys/class/net/$dev/address") ]; then
+                xo_log "Setting $dev to $state ($ip)"
+                if [ "$XO_CONFIG_FIRST" == 1 ]; then
+                    xo_log $(ip link set dev "$dev" "$state" 2>&1)
+                fi
+                xo_log $(ip address add "$ip" dev "$dev" 2>&1)
+            fi
+        done
     done
-    IFS=$OIFS
 }
 
-xo_log "Fetching configuration"
+xo_bootscripts() {
+    xo_log "Running bootscripts"
+    awk 'BEGIN { i = 0 } {
+        if (i==0 && $1 == "[scripts]") { i = 1; }
+        else if (substr($1, 0, 1) == "[" ) { i = 0; }
+        else if (i == 1 && substr($1, 1, 11) == "bootscript=") {
+            i = 2; print substr($0, 12) }
+        else if (i == 2 && substr($0, 1, 1) == "\t") {
+            print substr($0, 2) } }' "$XO_USER_DATA" > "$XO_BOOTSCRIPT"
+
+    xo_log $(ash "$XO_BOOTSCRIPT" 2>&1)
+    rm "$XO_BOOTSCRIPT"
+}
+
+xo_sync() {
+    while :; do
+        xo_import_user_data && break
+        sleep 5s
+    done
+
+    local h=$(sha256sum "${XO_USER_DATA}")
+
+    if [ "$h" != "$XO_CONFIG_HASH" ]; then
+        xo_log "Applying new configuration"
+        xo_parse_config
+
+        xo_sync_hostname
+        xo_sync_ifaces
+
+        if [ "$XO_CONFIG_FIRST" == 1 ]; then
+            xo_bootscripts
+        fi
+
+        XO_CONFIG_HASH=$h
+        XO_CONFIG_FIRST=0
+    fi
+}
+
+XO_CONFIG_FIRST=1
+XO_CONFIG_HASH=
+
 while :; do
-    xo_import_user_data && break
-    sleep 5s
+    xo_sync
+    sleep 10s
 done
-
-xo_log "Parsing configuration"
-xo_parse_config
-
-xo_log "Deploying configuration"
-xo_sync_hostname
-xo_sync_authorized
