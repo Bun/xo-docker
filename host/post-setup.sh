@@ -2,8 +2,8 @@
 
 source config.sh
 
-(echo "${mirror}latest-stable/main";
- echo "${mirror}latest-stable/community") > ${chroot_dir}/etc/apk/repositories
+(echo "${main_mirror}";
+ echo "${community_mirror}") > ${chroot_dir}/etc/apk/repositories
 
 mkdir -p ${chroot_dir}/root/.ssh
 chmod 700 ${chroot_dir}/root/.ssh

@@ -1,9 +1,7 @@
 /host/filesystem
 /host/docker-host/
 
-/host/sbin/
-/host/.PKGINFO
-/host/.SIGN.*
-
 /host/*.apk
 /host/linux-grsec/
+/host/apk-tools-static/
+/host/apk-cache/

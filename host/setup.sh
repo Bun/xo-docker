@@ -18,17 +18,9 @@ xo_create_fs() {
     mkdir "${chroot_dir}"
 }
 
-xo_apk_get() {
-    echo "Downloading apk-tools"
-    wget -N "${mirror}/latest-stable/main/x86_64/apk-tools-static-${version}.apk"
-    wget -N "${mirror}/latest-stable/main/x86_64/linux-grsec-4.1.15-r2.apk"
-}
-
-
 xo_mount() {
     echo "Mounting base image"
     mount -o loop "${fs}" "${chroot_dir}"
-    tar xf apk-tools-static-*.apk
 }
 
 xo_install() {
@@ -36,8 +28,8 @@ xo_install() {
     mkdir -p ${chroot_dir}/etc/apk
     cp -r apk-keys/ ${chroot_dir}/etc/apk/keys/
 
-    ./sbin/apk.static --update-cache \
-        --repository "${mirror}latest-stable/main" \
+    apk-tools-static/sbin/apk.static --update-cache \
+        --repository "${main_mirror}" \
         --root "${chroot_dir}" \
         --initdb \
         add alpine-base
@@ -62,10 +54,6 @@ xo_kmod_install() {
 
 xo_kmods() {
     echo "Installing modules"
-    # TODO: selectively install required modules
-    rm -rf linux-grsec
-    mkdir linux-grsec
-    (cd linux-grsec && tar xf ../linux-grsec*.apk 2>/dev/null)
 
     kver=$(ls -1 linux-grsec/lib/modules/ | head -1)
 
@@ -83,6 +71,7 @@ xo_kmods() {
     xo_kmod_install "$kver/kernel/drivers/net/ethernet/realtek/" "8139cp.ko"
     xo_kmod_install "$kver/kernel/drivers/net/ethernet/realtek/" "8139too.ko"
     xo_kmod_install "$kver/kernel/drivers/net/" "mii.ko"
+    xo_kmod_install "$kver/kernel/drivers/net/" "veth.ko"
     xo_kmod_install "$kver/kernel/drivers/net/" "virtio_net.ko"
     xo_kmod_install "$kver/kernel/drivers/parport/" "parport.ko"
     xo_kmod_install "$kver/kernel/drivers/parport/" "parport_pc.ko"
@@ -125,7 +114,6 @@ xo_chroot_prep() {
     mkdir -p ${chroot_dir}/etc/apk
 }
 
-xo_apk_get
 xo_create_fs
 xo_mount
 xo_install
